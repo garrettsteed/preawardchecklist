@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grant Checklist Generator</title>
+    <title>Grant Checklist Generator (Gemini)</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
         textarea { width: 100%; padding: 10px; font-family: inherit; }
-        button { padding: 10px 20px; background-color: #0078d4; color: white; border: none; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #005a9e; }
-        #output { background: #f3f2f1; padding: 20px; white-space: pre-wrap; border-radius: 4px; border: 1px solid #edebe9; }
+        button { padding: 10px 20px; background-color: #0b57d0; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #004aab; }
+        #output { background: #f8f9fa; padding: 20px; white-space: pre-wrap; border-radius: 4px; border: 1px solid #dadce0; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <h1>Grant Checklist Generator</h1>
+<p>Paste your grant guidelines below to generate an organized checklist via Gemini.</p>
 
-<p>Paste your grant guidelines below to generate an organized checklist.</p>
 <textarea id="inputText" rows="10" placeholder="Paste your grant text here..."></textarea>
 <br><br>
 
@@ -35,26 +35,27 @@ async function generateChecklist() {
         return;
     }
 
-    outputDiv.innerText = "Analyzing grant guidelines and generating checklist...";
+    outputDiv.innerText = "Analyzing grant guidelines with Gemini...";
+
+    // ⚠️ Security reminder: Keep your key safe and do not publish this file online with your key exposed!
+    const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
+    const MODEL_NAME = "gemini-2.5-flash";
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
 
     try {
-        // NOTE: Replace the string below with your actual OpenAI API key for local testing.
-        // REMEMBER: Do not publish this file online with your key visible!
-        const API_KEY = "YOUR_OPENAI_API_KEY_HERE"; 
-
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const response = await fetch(API_URL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${API_KEY}`
+                "x-goog-api-key": AQ.Ab8RN6JSYS73ukrj8w7KKZGMfQWDzLYs0AdyTQHItH-omdco9g
             },
             body: JSON.stringify({
-                model: "gpt-4o", // Updated to a valid model name
-                messages: [
+                contents: [
                     {
-                        role: "user",
-                        content: `You are a research administrator.
-
+                        parts: [
+                            {
+                                text: `You are a research administrator.
+                                
 Convert this grant into a checklist of tasks organized into:
 - Narrative
 - Budget
@@ -64,6 +65,8 @@ Convert this grant into a checklist of tasks organized into:
 
 Grant text:
 ${input}`
+                            }
+                        ]
                     }
                 ]
             })
@@ -72,14 +75,15 @@ ${input}`
         const data = await response.json();
 
         if (response.ok) {
-            outputDiv.innerText = data.choices[0].message.content;
+            // Extracting text from the structure unique to Gemini responses
+            outputDiv.innerText = data.candidates[0].content.parts[0].text;
         } else {
-            outputDiv.innerText = `API Error: ${data.error ? data.error.message : 'Unknown error'}`;
+            outputDiv.innerText = `Gemini API Error: ${data.error ? data.error.message : 'Unknown error'}`;
         }
 
     } catch (error) {
         console.error("Error:", error);
-        outputDiv.innerText = "An error occurred while connecting to the API. Check the console for details.";
+        outputDiv.innerText = "An error occurred while connecting to the Gemini API. Check the console for details.";
     }
 }
 </script>

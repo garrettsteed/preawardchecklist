@@ -37,17 +37,18 @@ async function generateChecklist() {
 
     outputDiv.innerText = "Analyzing grant guidelines with Gemini...";
 
-    // ⚠️ Security reminder: Keep your key safe and do not publish this file online with your key exposed!
-    const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
+    // 1. Put your actual API key here
+    const GEMINI_API_KEY = "AQ.Ab8RN6JSYS73ukrj8w7KKZGMfQWDzLYs0AdyTQHItH-omdco9g"; 
     const MODEL_NAME = "gemini-2.5-flash";
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
+    
+    // 2. Fixed: Moved the API key to the URL query parameter to prevent CORS errors in the browser
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
         const response = await fetch(API_URL, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": AQ.Ab8RN6JSYS73ukrj8w7KKZGMfQWDzLYs0AdyTQHItH-omdco9g
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
                 contents: [
@@ -75,7 +76,6 @@ ${input}`
         const data = await response.json();
 
         if (response.ok) {
-            // Extracting text from the structure unique to Gemini responses
             outputDiv.innerText = data.candidates[0].content.parts[0].text;
         } else {
             outputDiv.innerText = `Gemini API Error: ${data.error ? data.error.message : 'Unknown error'}`;
@@ -83,7 +83,7 @@ ${input}`
 
     } catch (error) {
         console.error("Error:", error);
-        outputDiv.innerText = "An error occurred while connecting to the Gemini API. Check the console for details.";
+        outputDiv.innerText = "An error occurred while connecting to the Gemini API. Check your browser's Developer Console (F12) for detailed logs.";
     }
 }
 </script>

@@ -3,80 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grant Checklist Generator (Gemini) verstion 4</title>
+    <title>Grant Checklist Generator (Gemini v6)</title>
+    <!-- Marked.js for rendering Gemini's Markdown output into HTML -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-        textarea { width: 100%; padding: 10px; font-family: inherit; }
-        button { padding: 10px 20px; background-color: #0b57d0; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            max-width: 900px; 
+            margin: 40px auto; 
+            padding: 0 20px; 
+            color: #202124;
+            line-height: 1.6;
+        }
+        .input-group { margin-bottom: 18px; }
+        label { font-weight: 600; display: block; margin-bottom: 6px; }
+        input[type="password"], textarea { 
+            width: 100%; 
+            padding: 10px; 
+            box-sizing: border-box;
+            border: 1px solid #dadce0; 
+            border-radius: 6px; 
+            font-family: inherit; 
+            font-size: 14px;
+        }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { 
+            padding: 10px 20px; 
+            background-color: #0b57d0; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 15px; 
+            font-weight: 500;
+        }
         button:hover { background-color: #004aab; }
-        #output { background: #f8f9fa; padding: 20px; white-space: pre-wrap; border-radius: 4px; border: 1px solid #dadce0; margin-top: 20px; }
+        button.secondary { background-color: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; }
+        button.secondary:hover { background-color: #e5e7eb; }
+        
+        /* Rendered Checklist Container Styling */
+        #output { 
+            background: #ffffff; 
+            padding: 28px; 
+            border-radius: 8px; 
+            border: 1px solid #dadce0; 
+            margin-top: 24px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        #output h1 { font-size: 24px; border-bottom: 2px solid #0b57d0; padding-bottom: 8px; color: #0b57d0; }
+        #output h2 { font-size: 18px; border-bottom: 1px solid #dadce0; padding-bottom: 4px; margin-top: 24px; }
+        #output h3 { font-size: 15px; margin-top: 16px; }
+        #output table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+        #output th, #output td { border: 1px solid #dadce0; padding: 10px 12px; text-align: left; }
+        #output th { background-color: #f8f9fa; font-weight: 600; }
+        #output blockquote { background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 16px 0; }
+        #output ul { padding-left: 20px; }
+        #output li { margin-bottom: 6px; }
     </style>
 </head>
 <body>
 
 <h1>Grant Checklist Generator</h1>
-<p>Paste your grant guidelines below to generate an organized checklist via Gemini.</p>
+<p>Paste your grant/RFA text below to render a structured research administration checklist.</p>
 
-<textarea id="inputText" rows="10" placeholder="Paste your grant text here..."></textarea>
-<br><br>
+<div class="input-group">
+    <label for="apiKey">Gemini API Key</label>
+    <input type="password" id="apiKey" placeholder="Paste key starting with AIzaSy..." />
+</div>
 
-<button onclick="generateChecklist()">Generate Checklist</button>
+<div class="input-group">
+    <label for="inputText">RFA / Grant Text Guidelines</label>
+    <textarea id="inputText" rows="12" placeholder="Paste grant guidelines, FOA, or solicitation text here..."></textarea>
+</div>
 
-<h2>Checklist:</h2>
-<div id="output">Your checklist will appear here...</div>
+<div class="btn-group">
+    <button onclick="generateChecklist()">Generate Deliverable</button>
+    <button class="secondary" onclick="clearFields()">Clear</button>
+</div>
+
+<h2>Rendered Deliverable</h2>
+<div id="output">Your formatted checklist will appear here...</div>
 
 <script>
+// Load stored API key on startup
+document.addEventListener("DOMContentLoaded", () => {
+    const savedKey = localStorage.getItem("gemini_api_key");
+    if (savedKey) document.getElementById("apiKey").value = savedKey;
+});
+
 async function generateChecklist() {
-    const input = document.getElementById("inputText").value;
+    const apiKey = document.getElementById("apiKey").value.trim();
+    const input = document.getElementById("inputText").value.trim();
     const outputDiv = document.getElementById("output");
 
-    if (!input.trim()) {
+    if (!apiKey) {
+        alert("Please enter a valid Gemini API Key.");
+        return;
+    }
+    if (!input) {
         alert("Please paste some grant text first!");
         return;
     }
 
-    outputDiv.innerText = "Analyzing grant guidelines with Gemini...";
+    // Save key to user's browser local storage
+    localStorage.setItem("gemini_api_key", apiKey);
 
-    // 1. Paste your Google AI Studio API key here (Must start with AIzaSy)
-    const GEMINI_API_KEY = "AQ.Ab8RN6JSYS73ukrj8w7KKZGMfQWDzLYs0AdyTQHItH-omdco9g"; 
+    outputDiv.innerHTML = "<em>Analyzing RFA text and constructing Markdown checklist...</em>";
+
     const MODEL_NAME = "gemini-2.5-flash";
-    
-    // 2. Setting key as query parameter fixes browser-based OAuth/CORS credential errors
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+
+    const systemPrompt = `Your job is to render a single, well-formatted Markdown checklist for the sponsored-programs analyst (the end-user). The deliverable is Markdown — NOT a JSON object and NOT a JSON code fence. The audience is a research administrator who will copy this into Word, paste into an email to the proposal team, or save to a shared folder.
+
+## CRITICAL — ALWAYS RENDER THE DELIVERABLE
+You MUST render the FULL Markdown deliverable structure (every section listed below), EVEN WHEN some fragment fields arrive as null, empty, missing, or sparse. NEVER refuse to render with apologetic prose like "The provided context does not contain the required information." That output is unusable — the operator needs the full structure with placeholders so they can see which fields need to be chased.
+
+Substitution rules when a field is null or missing:
+- Required scalar fields: substitute the literal string "Not specified in the document".
+- Optional table cells: substitute "—" (em dash).
+- Empty arrays: render the section with its empty-state language already specified below (e.g., "No items identified", "Defers to federal defaults", "None identified beyond standard federal requirements").
+
+If EVERY field across ALL upstream fragments is null (which means the document genuinely contained nothing extractable OR the document was not attached to the run), STILL render the full Markdown structure with "Not specified in the document" placeholders throughout, AND append a single line at the very end of the deliverable:
+> ⚠️ The upstream extraction returned no data from the uploaded document. Verify the document was attached and re-run the workflow.
+
+## Required structure (in this exact order)
+
+# RFA Checklist: <rfa_title>
+
+**Sponsor:** <sponsor_name>
+**RFA ID / Number:** <rfa_id> / <rfa_number>
+**Program Code:** <program_code or "Not specified">
+**Announcement URL:** <announcement_url or "Not specified">
+**Opportunity Number:** <opportunity_number or "Not specified">
+**CFDA Number:** <cfda_number or "Not specified">
+
+---
+
+## DATES & DEADLINES
+
+| Deadline / Event | Date / Time | Notes |
+|---|---|---|
+| (item) | (date_time) | (notes or "—") |
+
+---
+
+## ELIGIBILITY
+
+### Eligible Institutions
+- **<Institution Type>**
+  - Subcategory: <subcategory>
+  - Examples: <examples>
+  - Compliance: <compliance_requirements>
+
+### Eligible Individuals
+- **<Individual Type>**
+  - Criteria: <criteria>
+  - Compliance: <compliance_requirements>
+  - Conditions: <conditions>
+
+---
+
+## AWARD INFORMATION
+
+- **Award Duration:** <award_duration>
+- **Amount per Award:** <amount_per_award>
+- **Anticipated Number of Awards:** <number_of_awards or "Not specified">
+- **Anticipated Award Date:** <anticipated_award_date or "Not specified">
+
+---
+
+## APPLICATION COMPONENTS
+
+### Required Components
+
+| Component Name | Description / Details | Special Requirements |
+|---|---|---|
+
+### Optional Components
+
+| Component Name | Description / Details | Special Requirements |
+|---|---|---|
+
+---
+
+## BUDGET REQUIREMENTS & POLICIES
+
+- **Funding Limits:** <funding_limits prose, or "Not specified">
+- **Cost Sharing:** <cost_sharing_status>
+- **F&A / Indirect Cost Policy:** <fa_policy prose, or "Not specified">
+- **Allowable Costs:** <bulleted list or "Defers to federal defaults">
+- **Unallowable Costs:** <bulleted list or "None explicitly enumerated">
+- **Personnel Effort:** <personnel_effort prose, or "Not specified">
+- **Other Considerations:** <other_considerations prose, or "—">
+
+---
+
+## SUBMISSION DETAILS
+
+<submission_details paragraph or "Not specified in the document.">
+
+---
+
+## SPECIAL REQUIREMENTS
+
+<special_requirements bulleted list or "None identified beyond standard federal requirements.">
+
+---
+
+## IMPORTANT NOTES
+
+<bulleted list with bold lead items, or "No critical reviewer warnings beyond what appears in the sections above.">
+
+---
+
+## Placement contract (enforce as you render)
+1. Award amount and duration appear ONLY in AWARD INFORMATION.
+2. Detailed financial rules appear ONLY in BUDGET REQUIREMENTS & POLICIES.
+3. Per-component formatting rules appear ONLY on the individual component's Special Requirements column in APPLICATION COMPONENTS.
+4. Submission mechanics appear ONLY in SUBMISSION DETAILS.
+
+## Formatting rules
+- Preserve sponsor's monetary and date formatting verbatim.
+- Use **bold** for labels and critical action items.
+- Use — (em dash) for empty optional table cells; "Not specified in the document" for empty required fields.
+- No JSON. No code fences. No preamble. No closing commentary.`;
+
+    const fullPrompt = `${systemPrompt}\n\nGrant text to process:\n${input}`;
 
     try {
         const response = await fetch(API_URL, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: `You are a research administrator.
-                                
-Convert this grant into a checklist of tasks organized into:
-- Narrative
-- Budget
-- Administrative
-- Supporting Documents
-- Compliance
-
-Grant text:
-${input}`
-                            }
-                        ]
-                    }
-                ]
+                contents: [{ parts: [{ text: fullPrompt }] }]
             })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            outputDiv.innerText = data.candidates[0].content.parts[0].text;
+            const markdownText = data.candidates[0].content.parts[0].text;
+            // Render clean markdown text to HTML
+            outputDiv.innerHTML = marked.parse(markdownText);
         } else {
             outputDiv.innerText = `Gemini API Error: ${data.error ? data.error.message : 'Unknown error'}\nStatus: ${data.error ? data.error.status : ''}`;
         }
@@ -85,6 +253,11 @@ ${input}`
         console.error("Error:", error);
         outputDiv.innerText = "An error occurred while connecting to the Gemini API. Check your browser's Developer Console (F12) for detailed logs.";
     }
+}
+
+function clearFields() {
+    document.getElementById("inputText").value = "";
+    document.getElementById("output").innerHTML = "Your formatted checklist will appear here...";
 }
 </script>
 
